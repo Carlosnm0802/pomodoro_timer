@@ -290,6 +290,133 @@
             transform: translateX(0);
         }
 
+        /* Modal de Alarma */
+        .alarm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .alarm-modal.show {
+            display: flex;
+        }
+
+        .alarm-content {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 3px solid #fff;
+            animation: pulse 1s infinite, shake 0.5s infinite;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .alarm-content.break-alarm {
+            background: linear-gradient(135deg, #4ecdc4 0%, #7dd3fc 100%);
+        }
+
+        .alarm-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        .alarm-title {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .alarm-message {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .alarm-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .alarm-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .alarm-btn.continue {
+            background: #51cf66;
+            color: white;
+        }
+
+        .alarm-btn.continue:hover {
+            background: #40c057;
+            transform: translateY(-2px);
+        }
+
+        .alarm-btn.dismiss {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .alarm-btn.dismiss:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        /* Efecto de parpadeo para el fondo */
+        .alarm-modal.blinking {
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { background: rgba(0, 0, 0, 0.8); }
+            51%, 100% { background: rgba(255, 0, 0, 0.3); }
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 20px;
@@ -333,6 +460,21 @@
             <button class="btn-start" id="startBtn">Iniciar</button>
             <button class="btn-pause" id="pauseBtn">Pausar</button>
             <button class="btn-reset" id="resetBtn">Reiniciar</button>
+        </div>
+        
+        <!-- Botón para probar notificaciones -->
+        <div style="margin-top: 20px;">
+            <button class="btn-test" id="testNotificationBtn" style="background: #4ecdc4; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                🔔 Probar Notificación
+            </button>
+            <button class="btn-permission" id="requestPermissionBtn" style="background: #ff6b6b; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer;">
+                ⚙️ Solicitar Permisos
+            </button>
+        </div>
+        
+        <!-- Información de estado -->
+        <div id="notificationStatus" style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
+            Estado de notificaciones: <span id="permissionStatus">Verificando...</span>
         </div>
         <div class="stats">
             <div class="stat-item">
@@ -382,6 +524,19 @@
         <span id="notificationText">¡Tiempo completado!</span>
     </div>
 
+    <!-- Modal de Alarma -->
+    <div class="alarm-modal" id="alarmModal">
+        <div class="alarm-content" id="alarmContent">
+            <div class="alarm-icon" id="alarmIcon">🔔</div>
+            <div class="alarm-title" id="alarmTitle">¡Tiempo Completado!</div>
+            <div class="alarm-message" id="alarmMessage">Tu sesión ha terminado</div>
+            <div class="alarm-buttons">
+                <button class="alarm-btn continue" id="continueBtn">Continuar</button>
+                <button class="alarm-btn dismiss" id="dismissBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         class PomodoroTimer {
             constructor() {
@@ -411,6 +566,7 @@
                 this.updateDisplay();
                 this.loadStats();
                 this.bindEvents();
+                this.checkNotificationPermission();
             }
             
             initializeElements() {
@@ -425,6 +581,20 @@
                 this.currentCycleDisplay = document.getElementById('currentCycle');
                 this.notification = document.getElementById('notification');
                 this.notificationText = document.getElementById('notificationText');
+                
+                // Alarm modal elements
+                this.alarmModal = document.getElementById('alarmModal');
+                this.alarmContent = document.getElementById('alarmContent');
+                this.alarmIcon = document.getElementById('alarmIcon');
+                this.alarmTitle = document.getElementById('alarmTitle');
+                this.alarmMessage = document.getElementById('alarmMessage');
+                this.continueBtn = document.getElementById('continueBtn');
+                this.dismissBtn = document.getElementById('dismissBtn');
+                
+                // Notification test elements
+                this.testNotificationBtn = document.getElementById('testNotificationBtn');
+                this.requestPermissionBtn = document.getElementById('requestPermissionBtn');
+                this.permissionStatus = document.getElementById('permissionStatus');
                 
                 // Settings elements
                 this.settingsBtn = document.getElementById('settingsBtn');
@@ -455,6 +625,14 @@
                 });
                 
                 this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+                
+                // Alarm modal events
+                this.continueBtn.addEventListener('click', () => this.closeAlarmAndContinue());
+                this.dismissBtn.addEventListener('click', () => this.closeAlarm());
+                
+                // Notification test events
+                this.testNotificationBtn.addEventListener('click', () => this.testNotification());
+                this.requestPermissionBtn.addEventListener('click', () => this.requestNotificationPermission());
             }
             
             showSettings() {
@@ -576,23 +754,23 @@
                 if (this.isWorkSession) {
                     // Completamos una sesión de trabajo
                     this.completedSessions++;
-                    this.showNotification('¡Sesión de trabajo completada! 🎉 Tiempo de descanso');
                     
                     // Determinar tipo de descanso
                     if (this.completedSessions % 4 === 0) {
                         // Descanso largo cada 4 sesiones
                         this.timeLeft = this.config.longBreak * 60;
-                        this.showNotification(`¡Descanso largo! Relájate ${this.config.longBreak} minutos 😌`);
+                        this.showAlarm('🎉', '¡Sesión Completada!', `¡Excelente trabajo! Tiempo de descanso largo (${this.config.longBreak} min)`, 'break');
                         this.currentCycle++;
                     } else {
                         // Descanso corto
                         this.timeLeft = this.config.shortBreak * 60;
+                        this.showAlarm('🎉', '¡Sesión Completada!', `¡Buen trabajo! Tiempo de descanso corto (${this.config.shortBreak} min)`, 'break');
                     }
                     this.isWorkSession = false;
                 } else {
                     // Completamos un descanso
-                    this.showNotification('¡Descanso terminado! 💪 Hora de trabajar');
                     this.timeLeft = this.config.work * 60;
+                    this.showAlarm('💪', '¡Descanso Terminado!', `¡Hora de trabajar! Nueva sesión de ${this.config.work} minutos`, 'work');
                     this.isWorkSession = true;
                 }
                 
@@ -600,13 +778,6 @@
                 this.saveStats();
                 this.startBtn.textContent = 'Iniciar';
                 this.startBtn.disabled = false;
-                
-                // Auto-iniciar después de 3 segundos (opcional)
-                setTimeout(() => {
-                    if (!this.isRunning) {
-                        this.start();
-                    }
-                }, 3000);
             }
             
             updateDisplay() {
@@ -656,6 +827,46 @@
                 }, 4000);
             }
             
+            showAlarm(icon, title, message, type) {
+                // Configurar contenido de la alarma
+                this.alarmIcon.textContent = icon;
+                this.alarmTitle.textContent = title;
+                this.alarmMessage.textContent = message;
+                
+                // Configurar estilo según el tipo
+                if (type === 'break') {
+                    this.alarmContent.classList.add('break-alarm');
+                } else {
+                    this.alarmContent.classList.remove('break-alarm');
+                }
+                
+                // Mostrar modal de alarma
+                this.alarmModal.classList.add('show', 'blinking');
+                
+                // Reproducir sonido de alarma más intenso
+                this.playAlarmSound();
+                
+                // Mostrar notificación del sistema si está disponible
+                this.showSystemNotification(title, message);
+                
+                // Hacer que la ventana parpadee en la barra de tareas
+                this.flashWindow();
+            }
+            
+            closeAlarm() {
+                this.alarmModal.classList.remove('show', 'blinking');
+            }
+            
+            closeAlarmAndContinue() {
+                this.closeAlarm();
+                // Auto-iniciar después de cerrar la alarma
+                setTimeout(() => {
+                    if (!this.isRunning) {
+                        this.start();
+                    }
+                }, 1000);
+            }
+            
             playNotificationSound() {
                 try {
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -673,6 +884,76 @@
                 } catch (error) {
                     console.log('Audio no disponible:', error);
                 }
+            }
+            
+            playAlarmSound() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Crear una secuencia de sonidos más intensa
+                    const playBeep = (frequency, duration, delay = 0) => {
+                        setTimeout(() => {
+                            const oscillator = audioContext.createOscillator();
+                            const gainNode = audioContext.createGain();
+                            
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+                            
+                            oscillator.frequency.value = frequency;
+                            gainNode.gain.value = 0.3;
+                            
+                            oscillator.start();
+                            oscillator.stop(audioContext.currentTime + duration);
+                        }, delay);
+                    };
+                    
+                    // Secuencia de beeps
+                    playBeep(1000, 0.3, 0);
+                    playBeep(1200, 0.3, 400);
+                    playBeep(1000, 0.3, 800);
+                    playBeep(1200, 0.3, 1200);
+                    
+                } catch (error) {
+                    console.log('Audio de alarma no disponible:', error);
+                }
+            }
+            
+            showSystemNotification(title, message) {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const notification = new Notification(title, {
+                        body: message,
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>',
+                        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>',
+                        tag: 'pomodoro-alarm',
+                        requireInteraction: true,
+                        silent: false
+                    });
+                    
+                    // Cerrar notificación después de 10 segundos
+                    setTimeout(() => {
+                        notification.close();
+                    }, 10000);
+                }
+            }
+            
+            flashWindow() {
+                // Hacer que el título de la página parpadee
+                let flashCount = 0;
+                const originalTitle = document.title;
+                
+                const flashInterval = setInterval(() => {
+                    if (flashCount % 2 === 0) {
+                        document.title = '🔔 ¡ALARMA! ' + originalTitle;
+                    } else {
+                        document.title = originalTitle;
+                    }
+                    flashCount++;
+                    
+                    if (flashCount >= 10) {
+                        clearInterval(flashInterval);
+                        document.title = originalTitle;
+                    }
+                }, 500);
             }
             
             saveStats() {
@@ -693,6 +974,81 @@
                     this.updateDisplay();
                 }
             }
+            
+            checkNotificationPermission() {
+                if ('Notification' in window) {
+                    const permission = Notification.permission;
+                    this.updatePermissionStatus(permission);
+                } else {
+                    this.updatePermissionStatus('not-supported');
+                }
+            }
+            
+            updatePermissionStatus(permission) {
+                let statusText = '';
+                let statusColor = '';
+                
+                switch(permission) {
+                    case 'granted':
+                        statusText = '✅ Permitidas';
+                        statusColor = '#51cf66';
+                        break;
+                    case 'denied':
+                        statusText = '❌ Denegadas';
+                        statusColor = '#ff6b6b';
+                        break;
+                    case 'default':
+                        statusText = '⚠️ No solicitadas';
+                        statusColor = '#ffd43b';
+                        break;
+                    case 'not-supported':
+                        statusText = '❌ No soportadas';
+                        statusColor = '#868e96';
+                        break;
+                    default:
+                        statusText = '❓ Desconocido';
+                        statusColor = '#868e96';
+                }
+                
+                this.permissionStatus.textContent = statusText;
+                this.permissionStatus.style.color = statusColor;
+                this.permissionStatus.style.fontWeight = 'bold';
+            }
+            
+            requestNotificationPermission() {
+                if ('Notification' in window) {
+                    Notification.requestPermission().then(permission => {
+                        this.updatePermissionStatus(permission);
+                        if (permission === 'granted') {
+                            this.showNotification('✅ Permisos de notificación concedidos');
+                        } else {
+                            this.showNotification('❌ Permisos de notificación denegados');
+                        }
+                    });
+                } else {
+                    this.showNotification('❌ Tu navegador no soporta notificaciones');
+                }
+            }
+            
+            testNotification() {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const notification = new Notification('🔔 Prueba de Alarma Pomodoro', {
+                        body: '¡Esta es una prueba de notificación! Si ves esto, las alarmas funcionarán correctamente.',
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>',
+                        tag: 'pomodoro-test',
+                        requireInteraction: true
+                    });
+                    
+                    // También mostrar la alarma visual
+                    this.showAlarm('🔔', 'Prueba de Alarma', '¡Esta es una prueba! Si ves esta ventana, las alarmas funcionan correctamente.', 'work');
+                    
+                    setTimeout(() => {
+                        notification.close();
+                    }, 5000);
+                } else {
+                    this.showNotification('❌ Primero debes conceder permisos de notificación');
+                }
+            }
         }
         
         // Inicializar la aplicación cuando se carga la página
@@ -700,10 +1056,7 @@
             const pomodoroTimer = new PomodoroTimer();
         });
         
-        // Pedir permisos para notificaciones (opcional)
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+        // Las notificaciones se manejan manualmente a través de los botones
     </script>
 </body>
 </html>
